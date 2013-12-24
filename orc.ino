@@ -1,4 +1,4 @@
-#include  <SPI.h>		// SPI is needed for WiFly
+#include  <SPI.h>
 #include  <WiFly.h>
 
 #include <SoftwareServo.h>
@@ -47,41 +47,52 @@ void  setup() {
   WiFly.begin();
 }
 
-void  loop() {
+void  loop()
+{
   SoftwareServo::refresh();
   digitalWrite(LEDWIFICO, LOW);
-  connectWiFly();
+  while (!WiFly.join(WIFI_SSID, WIFI_PASS, WPA_MODE))
+    delay(REC_DELAY);
   digitalWrite(LEDWIFICO, HIGH);
   server.begin();
   while (serverLoop());
 }
 
-bool  serverLoop() {
+bool  serverLoop()
+{
   bool  ret = true;
   WiFlyClient client = server.available();
 
-  if (client) {
+  if (client)
+  {
     digitalWrite(LEDCLIENT, HIGH);
     String buffer = "";
     unsigned long lastGet = millis();
 
-    while (client.connected()) {
+    while (client.connected())
+    {
       int len = client.available();
 
-      if (client.available() == 0 && (millis() - lastGet) > TIMEOUT) {
+      if (len == 0 && (millis() - lastGet) > TIMEOUT)
+      {
         ret = false;
         break;
-      } else if (client.available() > 0) {
+      }
+      else if (len > 0)
+      {
         lastGet = millis();
-        for (int n = 0; n < len; n++) {
+        for (int n = 0; n < len; n++)
+        {
           char c = client.readChar();
         
-          if (c == '\n') {
-            if (buffer.length() > 1)
+          if (c == '\n')
+          {
+            if (buffer.length() >= 2)
               parseLine(buffer);
             buffer = "";
             break;
-          } else
+          }
+          else
             buffer += c;
         }
       }
@@ -98,47 +109,37 @@ bool  serverLoop() {
   return ret;
 }
 
-void  parseLine(String line) {
-  switch (line[0]) {
+inline void  parseLine(String &line)
+{
+  int  pos = line.substring(1).toInt();
+  
+  switch (line[0])
+  {
     case 'S':
-      setSteering(line.substring(1).toInt());
+      setSteering(pos);
       break;
     case 'T':
-      setThrottle(line.substring(1).toInt());
+      setThrottle(pos);
       break;
     case 'C':
-      setGoPro(line.substring(1).toInt());
+      setGoPro(pos);
       break;
     default:
       break;
   }
 }
 
-void  setGoPro(int pos) {
-  if (pos < MIN_GOPRO)
-    pos = MIN_GOPRO;
-  else if (pos > MAX_GOPRO)
-    pos = MAX_GOPRO;
-  gopro.write(pos);
+inline void  setGoPro(int pos)
+{
+  gopro.write((pos < MIN_GOPRO) ? MIN_GOPRO : ((pos > MAX_GOPRO) ? MAX_GOPRO : pos));
 }
 
-void  setSteering(int pos) {
-  if (pos < MIN_STEER)
-    pos = MIN_STEER;
-  else if (pos > MAX_STEER)
-    pos = MAX_STEER;
-  steering.write(pos);
+inline void  setSteering(int pos)
+{
+  steering.write((pos < MIN_STEER) ? MIN_STEER : ((pos > MAX_STEER) ? MAX_STEER : pos));
 }
 
-void  setThrottle(int speed) {
-  if (speed < MIN_THROT)
-    speed = MIN_THROT;
-  else if (speed > MAX_THROT)
-    speed = MAX_THROT;
-  throttle.write(speed);
-}
-
-void  connectWiFly() {
-  while (!WiFly.join(WIFI_SSID, WIFI_PASS, WPA_MODE))
-    delay(REC_DELAY);
+inline void  setThrottle(int pos)
+{
+  throttle.write((pos < MIN_THROT) ? MIN_THROT : ((pos > MAX_THROT) ? MAX_THROT : pos));
 }
